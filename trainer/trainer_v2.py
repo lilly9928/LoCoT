@@ -1,0 +1,156 @@
+##llava -> rationle data
+
+import sys
+sys.path.append('/home/user2/code/WIL_DeepLearningProject_2/NS2')
+
+
+
+import torch
+from torch.utils.data import DataLoader
+import json
+from torchvision import transforms
+import matplotlib.pyplot as plt
+import okvqa_data as data
+from options import Options
+from torch.nn import DataParallel
+import transformers
+from transformers import LlavaNextProcessor, LlavaNextForConditionalGeneration
+import re
+import os
+from tqdm import tqdm
+
+def extract_question_answer_rationale(text):
+    # Use regular expressions to extract the question, answer, and rationale
+    question_match = re.search(r'question:\s*(.*)\s*\[\s*/INST\]', text)
+    answer_match = re.search(r'Answer:\s*(.*)\s*,\s*Rationale:', text)
+    rationale_match = re.search(r'Rationale:\s*(.*)\s*$', text)
+
+    if question_match and answer_match and rationale_match:
+        question = question_match.group(1)
+        answer = answer_match.group(1)
+        rationale = rationale_match.group(1)
+        return question, answer, rationale
+    elif question_match:
+        question = question_match.group(1)
+        return question, text, None
+    else:
+        return None, None, None
+
+
+def normalize_string(input_string: str) -> str:
+    # 모든 대문자를 소문자로 변환
+    input_string = input_string.lower()
+
+    # 모든 빈칸 제거
+    input_string = re.sub(r'\s+', '', input_string)
+
+    return input_string
+
+
+def calculate_accuracy(predictions, targets):
+    targets = targets.split(' </s>')[0]
+    targets = normalize_string(targets)
+    predictions = normalize_string(predictions)
+    return predictions == targets
+
+if __name__ == "__main__":
+
+    transformers.logging.set_verbosity_error()
+    options = Options()
+    options.add_reader_options()
+    options.add_optim_options()
+    opt = options.parse()
+
+    opt.cache_dir = "/data2/KJE/hg_weight"
+
+
+    # 기본 설정
+    image_path = '/data2/KJE/VQA/COCO/images'
+    data_path = '/data2/KJE/ModelLogs/revive/processed_data/train.pkl'
+    n_ex_context = 40
+    batch_size = 1
+
+    # 데이터 전처리 (필요에 따라 변형 추가 가능)
+    transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor()
+    ])
+
+    # 데이터셋 불러오기
+
+    train_examples = data.load_data(
+        data_path,
+        # global_rank=opt.global_rank,
+        # world_size=opt.world_size,
+    )
+
+    dataset = data.FOL_Dataset(
+        data=train_examples,
+        image_path=image_path,
+        n_ex_context=n_ex_context,
+    )
+
+    # 데이터로더 초기화
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True,collate_fn=data.collate_fn)
+
+    # Model and processor initialization
+    processor = LlavaNextProcessor.from_pretrained("llava-hf/llava-v1.6-mistral-7b-hf",cache_dir=opt.cache_dir)
+    model = LlavaNextForConditionalGeneration.from_pretrained("llava-hf/llava-v1.6-mistral-7b-hf",
+                                                              torch_dtype=torch.float16, low_cpu_mem_usage=True,  pad_token_id = 2,cache_dir=opt.cache_dir)
+
+
+
+    # Use DataParallel for multi-GPU support
+    model = DataParallel(model)
+    model.to("cuda:0")
+
+    data = []
+    error_data= []
+    correct_count = 0
+    total_count = 0
+
+    # Process each batch
+    for batch in tqdm(dataloader):
+        inputs, targets = batch
+        inputs = {k: v.to("cuda:0") for k, v in inputs.items()}
+
+        outputs = model.module.generate(**inputs, max_new_tokens=200)
+        results = [processor.decode(output, skip_special_tokens=True) for output in outputs]
+
+
+        question,answer, rationale = extract_question_answer_rationale(results[0])
+
+
+
+        if rationale:
+            data.append({
+                "question": question,
+                "answer": answer,
+                "rationale": rationale
+            })
+        else:
+            error_data.append({
+                "question": question,
+                "answer": answer,
+            })
+
+            for target in targets:
+                if calculate_accuracy(answer, target):
+                    correct_count += 1
+                total_count += 1
+        break
+
+accuracy = correct_count / total_count if total_count > 0 else 0
+        # print(f"Question: {question}")
+        # print(f"Answer: {answer}")
+        # print(f"Rationale: {rationale}")
+
+save_path = '/data2/KJE/ModelLogs/Logic_LLama/llava-v1.6-mistral-7b_orignal'
+
+
+
+with open(os.path.join(save_path,f'results_acc_{accuracy}.json'), 'w', encoding='utf-8') as f:
+    json.dump(data, f, ensure_ascii=False, indent=4)
+
+with open(os.path.join(save_path,'error.json'), 'w', encoding='utf-8')as f:
+    json.dump(error_data, f, ensure_ascii=False, indent=4)
