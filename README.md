@@ -1,4 +1,4 @@
-# Basic settings for distributed training
+# Basic settings
 * Set the number of GPUs to use: <br/>`NUM_GPUS=num_of_gpus`
 * Set the rank of the current node (in multi-node training): <br/>`NODE_RANK=rank_of_node`
 * Set the number of nodes to use (in multi-node training): <br/>`NUM_NODES=num_of_nodes`
