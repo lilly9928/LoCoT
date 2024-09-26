@@ -1,5 +1,5 @@
 
-def Prompt4LM(model,num_object,num_llm_p,cot,datatype=""): 
+def Prompt4LM(model,num_object,num_llm_p,cot): 
     
     if 'vicuna' in model:
         start_word = "A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the human's questions. USER:"
@@ -13,7 +13,6 @@ def Prompt4LM(model,num_object,num_llm_p,cot,datatype=""):
         #"<|im_start|>system\n<your_system_prompt_here><|im_end|><|im_start|>user\n<image>\n<your_text_prompt_here><|im_end|><|im_start|>assistant\n"
         start_word = "<|im_start|>user"
         end_word = '<|im_end|><|im_start|>assistant\n'
-    
     elif model =="llava-hf/llama3-llava-next-8b-hf" :
         start_word = "[INST]"
         end_word = '[/INST]'
@@ -48,7 +47,6 @@ def Prompt4LM(model,num_object,num_llm_p,cot,datatype=""):
             "Question: \"{question}\"\n"
             f"{end_word}"
         )
-    
 
     PROMPT_OBJECT_SELECTION =  (
         f"{start_word} <image>\n" 
@@ -61,7 +59,7 @@ def Prompt4LM(model,num_object,num_llm_p,cot,datatype=""):
     PROMPT_SCORING = (
         f"{start_word} <image>\n"
         "Given the following:\n\n"
-        "- Information: \"{information}\"\n\n"
+        "- Information: \"{informa3wejkrrlaxoghksrlaxoghksrlaxoghksrlaxoghkwsrlaxogkjhslkrtion}\"\n\n"
         "Choose the most appropriate score to indicate whether the provided information is reasonable to image. Consider the image as well. Return only the letter corresponding to your choice from the options below:\n\n"
         "- (a) 0.1\n"
         "- (b) 0.5\n"
@@ -79,18 +77,6 @@ def Prompt4LM(model,num_object,num_llm_p,cot,datatype=""):
         "Question: \"{question}\"\n"
         f"{end_word}"
     )
-
-    if datatype == 'choice':
-
-        PROMPT_INFERENCE = (
-        f"{start_word}<image>\n"
-        "Question: \"{question}\"\n"
-        "Information: \" {premise}\n\n"
-        "{options}"
-        "Answer with the option's letter from the given choices directly.\n"
-        f"{end_word}"
-    )
-
 
 
 
@@ -181,11 +167,28 @@ VLM_PROMPT_FORMAT_FINAL_ANSWER = (
 
 )
 
-VLM_PROMPT_FORMAT_FINAL_ANSWER_onlyvlm = (
+VLM_PROMPT_blip = (
     "[INST] <image>\n"
      "Answer the question using a single word or phrase.\n"
      "Question: \"{question}\"\n"
+     "Answer:\n"
     "[/INST]"
+)
+
+VLM_PROMPT_blip_negative = (
+    "[INST] <image>\n"
+     "Answer the question using a single word or phrase.\n"
+     "Ensure your response is grounded in the given information, and avoid speculative or unsupported answers.\n"
+     "Question: \"{question}\"\n"
+     "Answer:\n"
+    "[/INST]"
+)
+VLM_PROMPT_mplugowl = (
+    '''The following is a conversation between a curious human and AI assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.
+Human: <image>
+Human: Answer the question using a single word or phrase.
+Human: \"{question}\"\n"
+AI: '''
 )
 
 VLM_PROMPT_FORMAT_FINAL_ANSWER_onlyvlm_cot = (
@@ -193,6 +196,13 @@ VLM_PROMPT_FORMAT_FINAL_ANSWER_onlyvlm_cot = (
      "Answer the question using a single word or phrase.\n"
      "Question: \"{question}\"\n"
      "Let's think step by step."
+    "[/INST]"
+)
+
+VLM_PROMPT_openflamingo = (
+    "[INST] <image>\n"
+     "Answer the question using a single word or phrase.\n"
+     "Question: \"{question}\"\n"
     "[/INST]"
 )
 
@@ -204,7 +214,14 @@ VLM_PROMPT_FORMAT_FINAL_ANSWER_onlyvlm_long_cot = (
      "\"{question}\"\n"
     "ASSISTANT:"
 )
-
+VLM_PROMPT_FORMAT_FINAL_ANSWER_onlyvlm_negative_cot = (
+    "A chat between a curious human and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the human's questions.USER: <image>\n"
+     #"Respond to the inquiry presented by providing your answer in a succinct and focused format, specifically limiting your response to either a single word or a short phrase. Ensure clarity and directness in your reply, avoiding any extraneous information or elaboration beyond the precise answer required by the question posed.\n"
+     "Answer the question using a single word or phrase.\n"
+     "Ensure your response is grounded in the given information, and avoid speculative or unsupported answers.\n"
+     "\"{question}\"\n"
+    "ASSISTANT:"
+)
 
 LLM_PROMPT_FORMAT_ANSWER = (
     "Answer the question using a single word or phrase.\n"

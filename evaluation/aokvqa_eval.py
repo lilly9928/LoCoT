@@ -12,6 +12,7 @@ def load_aokvqa(aokvqa_dir, split, version='v1p0'):
         os.path.join(aokvqa_dir, f"aokvqa_{version}_{split}.json")
     ))
     return dataset
+
 def eval_aokvqa(dataset, preds, multiple_choice=False, strict=True):
 
     if isinstance(dataset, list):
@@ -53,11 +54,6 @@ def eval_aokvqa(dataset, preds, multiple_choice=False, strict=True):
         else:
             num_match = sum([pred.lower() == da for da in direct_answers])
             vqa_acc = min(1.0, num_match / 3.0)
-            # print("pred: ", pred.lower())
-            # print("gt: ", direct_answers)
-            
-            # print('acc: ', vqa_acc)
-            # print()
             acc.append(vqa_acc)
 
     print('sum', sum(acc), 'len', len(acc), 'acc', sum(acc)/len(acc)*100)
@@ -87,19 +83,6 @@ if __name__ == '__main__':
         predictions={}
         for item in predictions_:
             predictions.update(item)
-
-        # for q in predictions.keys():
-        #     if 'multiple_choice' in predictions[q].keys():
-        #         mc_predictions[q] = predictions[q]['multiple_choice']
-        #
-        # if mc_predictions != {}:
-        #     mc_acc = eval_aokvqa(
-        #         dataset,
-        #         mc_predictions,
-        #         multiple_choice=True,
-        #         strict=False
-        #     )
-        #     print(prediction_file, 'MC', mc_acc)
 
         # Direct Answer
 

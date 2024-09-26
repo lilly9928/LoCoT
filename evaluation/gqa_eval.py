@@ -76,7 +76,7 @@ parser.add_argument('--tier',           default = "testdev",                    
 parser.add_argument('--scenes',         default="{tier}_sceneGraphs.json",   type = str,    help = "Scene graphs file name format.")
 parser.add_argument('--questions',      default="{tier}_all_questions.json", type = str,    help = "Questions file name format.")
 parser.add_argument('--choices',        default="{tier}_choices.json",       type = str,    help = "Choices file name format.")
-parser.add_argument('--predictions',    default="{tier}_predictions.json",   type = str,    help = "Answers file name format.")
+parser.add_argument('--predictions',    default="predictions_gqa_{tier}.json",   type = str,    help = "Answers file name format.")
 parser.add_argument('--attentions',     default="{tier}_attentions.json",    type = str,    help = "Attentions file name format.")
 parser.add_argument('--consistency',    action="store_true",        help = "True to compute consistency score (Need to provide answers to questions in val_all_questions.json).")
 parser.add_argument('--grounding',      action="store_true",        help = "True to compute grounding score (If model uses attention).")
@@ -344,115 +344,115 @@ def chiSquare(goldDist, predictedDist):
 
 ##### Main score computation 
 ##########################################################################################
+if __name__ == '__main__':
+    # Loop over the questions and compute mterics
+    for qid, question in tqdm(questions.items()):
+        gold = question["answer"].lower().strip()
+        predicted = predictions[qid].lower().strip()
 
-# Loop over the questions and compute mterics
-for qid, question in tqdm(questions.items()):
-    gold = question["answer"].lower().strip()
-    predicted = predictions[qid].lower().strip()
+        correct = (predicted == gold)
+        score = toScore(correct)
 
-    correct = (predicted == gold)
-    score = toScore(correct)
-
-    wordsNum = getWordsNum(question)
-    stepsNum = getStepsNum(question)
-    
-    # Compute scores over the balanced dataset (more robust against cheating by making educated guesses)
-    if question["isBalanced"]:
-        # Update accuracy
-        scores["accuracy"].append(score)
-        scores["accuracyPerLength"][wordsNum].append(score)
-        scores["accuracyPerSteps"][stepsNum].append(score)
-        scores["accuracyPerStructuralType"][question["types"]["structural"]].append(score)
-        scores["accuracyPerSemanticType"][question["types"]["semantic"]].append(score)
-        answerType = "open" if question["types"]["structural"] == "query" else "binary"
-        scores[answerType].append(score)
-
-        # # Update validity score
-        # valid = belongs(predicted, choices[qid]["valid"], question)
-        # scores["validity"].append(toScore(valid))
-
-        # # Update plausibility score
-        # plausible = belongs(predicted, choices[qid]["plausible"], question)
-        # scores["plausibility"].append(toScore(plausible))
-
-        # Optionally compute grounding (attention) score
-        # if attentions is not None:
-        #     groundingScore = computeGroundingScore(question, scenes[question["imageId"]], attentions[qid])
-        #     if groundingScore is not None:
-        #         scores["grounding"].append(groundingScore)
+        wordsNum = getWordsNum(question)
+        stepsNum = getStepsNum(question)
         
-        # Update histograms for gold and predicted answers
-        globalGroup = question["groups"]["global"]
-        if globalGroup is not None:
-            dist["gold"][globalGroup][gold] += 1
-            dist["predicted"][globalGroup][predicted] += 1
+        # Compute scores over the balanced dataset (more robust against cheating by making educated guesses)
+        if question["isBalanced"]:
+            # Update accuracy
+            scores["accuracy"].append(score)
+            scores["accuracyPerLength"][wordsNum].append(score)
+            scores["accuracyPerSteps"][stepsNum].append(score)
+            scores["accuracyPerStructuralType"][question["types"]["structural"]].append(score)
+            scores["accuracyPerSemanticType"][question["types"]["semantic"]].append(score)
+            answerType = "open" if question["types"]["structural"] == "query" else "binary"
+            scores[answerType].append(score)
 
-        # Compute consistency (for entailed questions)
-        # updateConsistency(qid, question, questions)
+            # # Update validity score
+            # valid = belongs(predicted, choices[qid]["valid"], question)
+            # scores["validity"].append(toScore(valid))
 
-# Compute distribution score
-scores["distribution"] = chiSquare(dist["gold"], dist["predicted"]) / 100
+            # # Update plausibility score
+            # plausible = belongs(predicted, choices[qid]["plausible"], question)
+            # scores["plausibility"].append(toScore(plausible))
 
-# Average scores over all questions (in the balanced dataset) and print scores
+            # Optionally compute grounding (attention) score
+            # if attentions is not None:
+            #     groundingScore = computeGroundingScore(question, scenes[question["imageId"]], attentions[qid])
+            #     if groundingScore is not None:
+            #         scores["grounding"].append(groundingScore)
+            
+            # Update histograms for gold and predicted answers
+            globalGroup = question["groups"]["global"]
+            if globalGroup is not None:
+                dist["gold"][globalGroup][gold] += 1
+                dist["predicted"][globalGroup][predicted] += 1
 
-metrics = [
-    "binary",
-    "open",
-    "accuracy",
-    "consistency",
-    "validity",
-    "plausibility",
-    "grounding",
-    "distribution"
-]
+            # Compute consistency (for entailed questions)
+            # updateConsistency(qid, question, questions)
 
-detailedMetrics = [
-    ("accuracyPerStructuralType", "Accuracy / structural type"), 
-    ("accuracyPerSemanticType", "Accuracy / semantic type"), 
-    ("accuracyPerSteps", "Accuracy / steps number"),
-    ("accuracyPerLength", "Accuracy / words number") 
-]
+    # Compute distribution score
+    scores["distribution"] = chiSquare(dist["gold"], dist["predicted"]) / 100
 
-subMetrics = {
-    "attr": "attribute",
-    "cat": "category",
-    "global": "scene",
-    "obj": "object",
-    "rel": "relation" 
-}
-# average
-for k in metrics:
-    if isinstance(scores[k], list):
-        scores[k] = avg(scores[k]) * 100
+    # Average scores over all questions (in the balanced dataset) and print scores
 
-for k, _ in detailedMetrics:
-    for t in scores[k]:
-        scores[k][t] = avg(scores[k][t]) * 100, len(scores[k][t])
+    metrics = [
+        "binary",
+        "open",
+        "accuracy",
+        "consistency",
+        "validity",
+        "plausibility",
+        "grounding",
+        "distribution"
+    ]
 
-# print
-print("")
-for m in metrics:
-    # skip grounding and consistency scores if not requested
-    if m == "grounding" and not args.grounding:
-        continue
-    if m == "consistency" and not args.consistency:
-        continue
+    detailedMetrics = [
+        ("accuracyPerStructuralType", "Accuracy / structural type"), 
+        ("accuracyPerSemanticType", "Accuracy / semantic type"), 
+        ("accuracyPerSteps", "Accuracy / steps number"),
+        ("accuracyPerLength", "Accuracy / words number") 
+    ]
 
-    # print score
-    print("{title}: {score:.2f}{suffix}".format(title = m.capitalize(), score = scores[m], 
-        suffix = " (lower is better)" if m == "distribution" else "%"))
-
-for m, mPrintName in detailedMetrics:
-    print("")
-    # print metric title
-    print("{}:".format(mPrintName))
-    
-    for t in sorted(list(scores[m].keys())):
-        # set sub-metric title
-        tName = t
+    subMetrics = {
+        "attr": "attribute",
+        "cat": "category",
+        "global": "scene",
+        "obj": "object",
+        "rel": "relation" 
+    }
+    # average
+    for k in metrics:
         if isinstance(scores[k], list):
-            tName = subMetrics.get(t, t).capitalize()
+            scores[k] = avg(scores[k]) * 100
+
+    for k, _ in detailedMetrics:
+        for t in scores[k]:
+            scores[k][t] = avg(scores[k][t]) * 100, len(scores[k][t])
+
+    # print
+    print("")
+    for m in metrics:
+        # skip grounding and consistency scores if not requested
+        if m == "grounding" and not args.grounding:
+            continue
+        if m == "consistency" and not args.consistency:
+            continue
 
         # print score
-        print("  {title}: {score:.2f}{suffix} ({amount} questions)".format(title = tName, 
-            score = scores[m][t][0], suffix = "%", amount = scores[m][t][1]))   
+        print("{title}: {score:.2f}{suffix}".format(title = m.capitalize(), score = scores[m], 
+            suffix = " (lower is better)" if m == "distribution" else "%"))
+
+    for m, mPrintName in detailedMetrics:
+        print("")
+        # print metric title
+        print("{}:".format(mPrintName))
+        
+        for t in sorted(list(scores[m].keys())):
+            # set sub-metric title
+            tName = t
+            if isinstance(scores[k], list):
+                tName = subMetrics.get(t, t).capitalize()
+
+            # print score
+            print("  {title}: {score:.2f}{suffix} ({amount} questions)".format(title = tName, 
+                score = scores[m][t][0], suffix = "%", amount = scores[m][t][1]))   

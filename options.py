@@ -31,6 +31,7 @@ class Options():
     def add_reader_options(self):
         self.parser.add_argument('--data', type=str, default='aokvqa',
                                  help='data name ')
+        self.parser.add_argument('--split', type=str, default="val", choices=["train", "test", "val", "testdev"], help="Split, e.g. train, test, val, testdev")
         self.parser.add_argument('--image_path', type=str, default='/data2/KJE/VQA/COCO/images',
                                  help='path of image path')
         self.parser.add_argument('--data_path', type=str, default='/data2/KJE/ModelLogs/revive/processed_data/test.pkl',
@@ -42,50 +43,49 @@ class Options():
 
     def add_model_options(self):
         self.parser.add_argument('--vlm_name', type=str, default="Salesforce/blip2-flan-t5-xxl",
-                                 help='name of vlm name')
+                                 help='the name of the vlm')
         self.parser.add_argument('--lvlm_name', type=str, default="llava-hf/llava-v1.6-mistral-7b-hf",
-                                 help='name of vlm name')
+                                 help='the name of the lvlm')
         self.parser.add_argument('--cot', type=str, default="no",
-                                 help='cot')
+                                 help='whether to use cot')
         self.parser.add_argument('--llm4logic_name', type=str,
                                  default='mistralai/Mistral-7B-Instruct-v0.2',
-                                 help='name of logic path')
+                                 help='the name of the logic llm')
         self.parser.add_argument('--llm_name', type=str,
                                  default= "mistralai/Mistral-7B-Instruct-v0.2",
-                                 help='name of llm')
+                                 help='the name of the llm')
         self.parser.add_argument('--inference_model', type=str,
                                  default= "vlm",
-                                 help='inference_model')
+                                 help='a model for the inference')
         self.parser.add_argument('--conclusion_lm', type=str,
                                  default="vlm",
-                                 help='conclusion_lm')
+                                 help='a model for the conclusion')
         self.parser.add_argument('--scoring_LLM', type=bool,
                                  default=False,
-                                 help='scoring_LLM')
+                                 help='whether to use the scoring LLM')
         self.parser.add_argument('--peft_model_id', type=str, default="lilly9928/LogicLLM",
-                                 help='name of peft model')
+                                 help='the name of the peft model')
         self.parser.add_argument('--detection_config', type=str, default='../configs/COCO-Detection/faster_rcnn_X_101_32x8d_FPN_3x.yaml',
                                  help='path of detection config')
-        self.parser.add_argument('--detection_weight', type=str, default='/data2/KJE/weights/model_final_68b088.pkl',
+        self.parser.add_argument('--detection_weight' , type=str, default='/data2/KJE/weights/model_final_68b088.pkl',
                                  help='path of detection weight')
         self.parser.add_argument('--prompt', type=str, default='no', help='Prompt type to use: no, cot, long_cot')
 
     def initialize_parser(self):
         # basic parameters
-        self.parser.add_argument('--name', type=str, default='ddp_GQA', help='name of the experiment')
+        self.parser.add_argument('--name', type=str, default='ddp_GQA', help='the name of the experiment')
         # self.parser.add_argument('--checkpoint_dir', type=str, default="/data2/KJE/ModelLogs/revive/checkpoint/", help='models are saved here')
         # self.parser.add_argument('--model_path', type=str, default='none', help='path for retraining')
-        self.parser.add_argument('--hg_token', type=str, default="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", help='huggingface token key')
-        self.parser.add_argument('--openai_token', type=str, default="",
-                                 help='openai token key')
+        self.parser.add_argument('--hg_token', type=str, help='huggingface token key')
+        self.parser.add_argument('--openai_token', type=str, help='openai token key')
         self.parser.add_argument('--logger_path', type=str, default="/data3/KJE/modelLog/Logic_LLama",
                                  help='logger path')
-        self.parser.add_argument('--start_index', help='start_index')
-        self.parser.add_argument('--object_num', default=2, type=int,help='object_num')
-        self.parser.add_argument('--beam_num_vlm', default=2, type=int,help='beam_num_vlm')
+        self.parser.add_argument('--start_index', help='start index')
+        self.parser.add_argument('--object_num', default=2, type=int,help='the number of objects')
+        self.parser.add_argument('--beam_num_vlm', default=2, type=int,help='the number of beams of vlm')
         self.parser.add_argument('--threshold', default=0.5, type=float,help='threshold')
-        self.parser.add_argument('--num_object_premises', default=2, type=int,help='num_object_premises')
-        self.parser.add_argument('--num_llm_premises', default=2, type=int,help='num_llm_premises')
+        self.parser.add_argument('--num_object_premises', default=2, type=int,help='the number of object premises')
+        self.parser.add_argument('--num_llm_premises', default=2, type=int,help='the number of llm premises')
         # dataset parameters
         self.parser.add_argument("--per_gpu_batch_size", default=1, type=int,
                         help="Batch size per GPU/CPU for training.")
@@ -97,7 +97,7 @@ class Options():
                         help="Main port (for multi-node SLURM jobs)")
         self.parser.add_argument('--seed', type=int, default=0, help="random seed for initialization")
         # training parameters
-        self.parser.add_argument('--device', type=str, default="cuda", help='which device the training is on.')
+        self.parser.add_argument('--device', type=str, choices=["cuda", "cpu"], default="cuda", help='which device to train on')
         self.parser.add_argument('--print_freq', type=int, default=100,
                         help='print loss every <print_freq> steps during training')
         self.parser.add_argument('--eval_freq', type=int, default=1000,
