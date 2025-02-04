@@ -1,3 +1,6 @@
+#TODO
+[] Update with revised code
+
 # Basic settings
 * Set the number of GPUs to use: <br/>`NUM_GPUS=num_of_gpus`
 * Set the rank of the current node (in multi-node training): <br/>`NODE_RANK=rank_of_node`
