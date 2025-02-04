@@ -1,5 +1,5 @@
-#TODO
-[] Update with revised code
+# TODO
+- [ ] Update with revised code
 
 # Basic settings
 * Set the number of GPUs to use: <br/>`NUM_GPUS=num_of_gpus`
