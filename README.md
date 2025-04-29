@@ -9,7 +9,7 @@
 * Set the port of master: <br/>`MASTER_PORT=port_of_master`
 * Set the GPUs to use: <br/>`CUDA_VISIBLE_DEVICES=gpu_devices`
 
-# Training
+# Inference
 To train the model, run the following command:
 ```
 CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES torchrun \
